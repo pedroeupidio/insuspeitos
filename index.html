@@ -1,0 +1,263 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Insuspeitos</title><style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#12121d;color:#f8f6ff}*{box-sizing:border-box}body{margin:0}main{max-width:900px;margin:auto;padding:24px 16px 70px}h1{text-align:center;letter-spacing:3px;margin:0;font-size:clamp(2rem,7vw,3rem)}h2{margin:8px 0 10px;font-size:1.6rem}.sub{text-align:center;color:#a9a4c1;margin:6px 0 32px}.screen{animation:fade .25s ease}.hidden{display:none!important}@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}.muted{color:#b8b3cb;line-height:1.5}.panel{background:#202033;border:1px solid #37364e;border-radius:18px;padding:20px;margin:18px 0}.actions{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}button{border:0;border-radius:12px;padding:14px 18px;font:inherit;font-weight:750;cursor:pointer;background:#bba0ff;color:#1b1429}button:disabled{opacity:.38;cursor:not-allowed}.secondary{background:#35334d;color:#f8f6ff}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:22px 0}.number-card{aspect-ratio:2/3;border:2px solid #514c6b;border-radius:15px;background:linear-gradient(145deg,#302c49,#201d32);display:grid;place-items:center;font-size:clamp(1.6rem,6vw,3.4rem);font-weight:900}.number-card.culprit{background:#f5c45c;color:#251b1c;border-color:#fff;box-shadow:0 0 22px #f5c45c55}.hint-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.hint{border:2px solid #5b5671;border-radius:18px;overflow:hidden;background:#26243a;transition:opacity .2s,border .2s,transform .2s}.hint.selected{border-color:#f5c45c;box-shadow:0 0 0 2px #f5c45c55;transform:translateY(-3px)}.hint.unselected{opacity:.4;filter:grayscale(.55)}.half{padding:16px;min-height:130px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;line-height:1.4}.green{background:#17624c}.red{background:#90334b}.hint footer{padding:12px;text-align:center}.hint footer button{width:100%}.hint footer .picked{color:#f5c45c;font-weight:800;padding:10px}.status{background:#29273d;border-radius:12px;padding:14px;line-height:1.5}.history{padding-left:24px;color:#c8c4d8}.history li{margin:8px 0}.eyebrow{color:#d4b4ff;font-size:.8rem;font-weight:850;letter-spacing:2px;text-transform:uppercase}.result{font-size:1.8rem;color:#f5c45c;font-weight:900}.center{text-align:center}.big{font-size:clamp(2.5rem,10vw,5rem);font-weight:900;color:#f5c45c;margin:12px 0}@media(max-width:520px){.hint-grid{gap:9px}.half{padding:10px;min-height:145px;font-size:.86rem}.hint footer{padding:8px}.hint footer button{padding:12px 5px;font-size:.85rem}.grid{gap:7px}.panel{padding:15px}}
+</style></head><body><main><h1>INSUSPEITOS</h1><p class="sub">Um culpado. Muitas suspeitas.</p>
+<section id="screenStart" class="screen"><p class="eyebrow">Etapa 1 · Preparação</p><h2>Quem é o culpado?</h2><p class="muted">Organize os 12 personagens na mesa seguindo as posições abaixo. Sorteie uma posição para definir o culpado.</p><div id="grid" class="grid"></div><div id="culpritStatus" class="status">Nenhum culpado sorteado ainda.</div><div class="actions"><button id="start">Sortear culpado</button><button id="goHints" class="secondary hidden">Ir para as dicas →</button></div></section>
+<section id="screenHints" class="screen hidden"><p class="eyebrow">Etapa 2 · Investigação</p><h2>Cartas de dicas</h2><p class="muted">Escolha uma das duas cartas. Ela ficará destacada e a outra permanecerá ao lado até você pedir novas dicas.</p><div id="count" class="status"></div><div id="options" class="hint-grid"></div><div class="actions"><button id="draw">Sortear duas dicas</button><button id="finish" class="secondary" disabled>Equipe acertou!</button></div><div class="panel"><strong>Histórico de dicas</strong><ol id="history" class="history"></ol></div></section>
+<section id="screenEnd" class="screen hidden center"><p class="eyebrow">Etapa 3 · Resultado</p><h2>Rodada encerrada!</h2><div id="result" class="big"></div><p id="summary" class="muted"></p><button id="again">Começar nova partida</button></section>
+</main><script>
+const deck=[
+  [
+    "Ele mora sozinho.",
+    "Ele divide a casa com outras pessoas."
+  ],
+  [
+    "Ele é capaz de trair um amigo para se dar bem.",
+    "Ele jamais trairia um amigo."
+  ],
+  [
+    "Ele esconde um grande segredo da família.",
+    "A família sabe de todos os seus segredos."
+  ],
+  [
+    "Ele já teve um amor secreto.",
+    "Ele nunca escondeu por quem estava apaixonado."
+  ],
+  [
+    "Ele se apaixonaria pelo melhor amigo.",
+    "Ele jamais se apaixonaria pelo melhor amigo."
+  ],
+  [
+    "Ele acredita em amor à primeira vista.",
+    "Ele não acredita em amor à primeira vista."
+  ],
+  [
+    "Ele já stalkeou um ex nas redes sociais.",
+    "Ele nunca procura saber da vida dos ex."
+  ],
+  [
+    "Ele voltaria com um ex.",
+    "Ele nunca voltaria com um ex."
+  ],
+  [
+    "Ele terminaria um namoro por mensagem.",
+    "Ele jamais terminaria um namoro por mensagem."
+  ],
+  [
+    "Ele já fingiu gostar de alguém por interesse.",
+    "Ele nunca finge gostar de alguém por interesse."
+  ],
+  [
+    "Ele mentiria para proteger um amigo.",
+    "Ele não mentiria nem para proteger um amigo."
+  ],
+  [
+    "Ele é muito ciumento.",
+    "Ele não sente ciúmes."
+  ],
+  [
+    "Ele perdoaria uma traição.",
+    "Ele jamais perdoaria uma traição."
+  ],
+  [
+    "Ele já foi o motivo do fim de um namoro.",
+    "Ele nunca se envolveu no fim do namoro de ninguém."
+  ],
+  [
+    "Ele prefere relacionamentos sem compromisso.",
+    "Ele só se interessa por relacionamentos sérios."
+  ],
+  [
+    "Ele já mandou mensagem e se arrependeu na hora.",
+    "Ele nunca se arrepende de uma mensagem enviada."
+  ],
+  [
+    "Ele tem uma paixão platônica.",
+    "Ele não tem nenhuma paixão platônica."
+  ],
+  [
+    "Ele casaria por dinheiro.",
+    "Ele jamais casaria por dinheiro."
+  ],
+  [
+    "Ele namoraria alguém muito mais velho.",
+    "Ele não namoraria alguém muito mais velho."
+  ],
+  [
+    "Ele é o tipo de pessoa que some sem dar explicação.",
+    "Ele sempre dá explicações antes de se afastar."
+  ],
+  [
+    "Ele roubaria a ideia de um colega.",
+    "Ele nunca levaria crédito pela ideia de outra pessoa."
+  ],
+  [
+    "Ele já fingiu estar doente para faltar a um compromisso.",
+    "Ele jamais fingiria estar doente para faltar."
+  ],
+  [
+    "Ele trapacearia em um jogo para vencer.",
+    "Ele prefere perder a trapacear."
+  ],
+  [
+    "Ele guardaria dinheiro encontrado na rua.",
+    "Ele tentaria devolver dinheiro encontrado na rua."
+  ],
+  [
+    "Ele já espalhou uma fofoca.",
+    "Ele nunca espalha fofocas."
+  ],
+  [
+    "Ele adora saber da vida alheia.",
+    "Ele não tem interesse na vida alheia."
+  ],
+  [
+    "Ele inventaria uma história para impressionar alguém.",
+    "Ele nunca inventaria uma história para impressionar."
+  ],
+  [
+    "Ele se considera melhor que os outros.",
+    "Ele não se considera superior a ninguém."
+  ],
+  [
+    "Ele já fingiu não reconhecer alguém.",
+    "Ele sempre cumprimenta quem conhece."
+  ],
+  [
+    "Ele abandonaria um amigo numa festa.",
+    "Ele nunca deixaria um amigo sozinho numa festa."
+  ],
+  [
+    "Ele seria capaz de guardar um segredo por anos.",
+    "Ele não consegue guardar segredo por muito tempo."
+  ],
+  [
+    "Ele gosta de ser o centro das atenções.",
+    "Ele evita ser o centro das atenções."
+  ],
+  [
+    "Ele se acha uma pessoa misteriosa.",
+    "Ele se considera um livro aberto."
+  ],
+  [
+    "Ele tem medo de ficar sozinho.",
+    "Ele gosta muito de ficar sozinho."
+  ],
+  [
+    "Ele acredita em fantasmas.",
+    "Ele não acredita em fantasmas."
+  ],
+  [
+    "Ele consulta horóscopo antes de tomar decisões.",
+    "Ele nunca leva horóscopo em consideração."
+  ],
+  [
+    "Ele acredita que tudo acontece por um motivo.",
+    "Ele acha que as coisas acontecem por acaso."
+  ],
+  [
+    "Ele tem uma superstição secreta.",
+    "Ele não tem nenhuma superstição."
+  ],
+  [
+    "Ele tem medo de filmes de terror.",
+    "Ele assiste a filmes de terror sem sentir medo."
+  ],
+  [
+    "Ele acredita em vida extraterrestre.",
+    "Ele não acredita em vida extraterrestre."
+  ],
+  [
+    "Ele conversa sozinho quando ninguém está olhando.",
+    "Ele nunca conversa sozinho."
+  ],
+  [
+    "Ele ensaia discussões imaginárias no banho.",
+    "Ele nunca ensaia discussões imaginárias."
+  ],
+  [
+    "Ele guarda uma gaveta de meias furadas.",
+    "Ele se desfaz de qualquer meia furada."
+  ],
+  [
+    "Ele canta alto quando está sozinho.",
+    "Ele nunca canta alto quando está sozinho."
+  ],
+  [
+    "Ele chora assistindo a filmes.",
+    "Ele nunca chora assistindo a filmes."
+  ],
+  [
+    "Ele já inventou um compromisso para não sair.",
+    "Ele nunca inventa compromissos para recusar convites."
+  ],
+  [
+    "Ele prefere passar o fim de semana em casa.",
+    "Ele prefere sair de casa no fim de semana."
+  ],
+  [
+    "Ele seria eliminado primeiro num reality show.",
+    "Ele chegaria à final de um reality show."
+  ],
+  [
+    "Ele seria um vilão numa novela.",
+    "Ele seria um herói numa novela."
+  ],
+  [
+    "Ele sobreviveria sozinho numa ilha deserta.",
+    "Ele não sobreviveria sozinho numa ilha deserta."
+  ],
+  [
+    "Ele seria o líder de um grupo em crise.",
+    "Ele evitaria liderar um grupo em crise."
+  ],
+  [
+    "Ele ficaria famoso por um escândalo.",
+    "Ele nunca ficaria famoso por um escândalo."
+  ],
+  [
+    "Ele gastaria uma fortuna numa festa.",
+    "Ele jamais gastaria uma fortuna numa festa."
+  ],
+  [
+    "Ele emprestaria dinheiro sem cobrar de volta.",
+    "Ele sempre cobraria um empréstimo."
+  ],
+  [
+    "Ele largaria tudo para viajar pelo mundo.",
+    "Ele nunca largaria tudo para viajar."
+  ],
+  [
+    "Ele já se apaixonou por alguém que conheceu online.",
+    "Ele nunca se apaixonou por alguém que conheceu online."
+  ],
+  [
+    "Ele tem um perfil secreto nas redes sociais.",
+    "Ele não tem perfis secretos nas redes sociais."
+  ],
+  [
+    "Ele prefere mentir a magoar alguém.",
+    "Ele prefere ser sincero mesmo que magoe alguém."
+  ],
+  [
+    "Ele aceitaria participar de uma pegadinha cruel.",
+    "Ele jamais participaria de uma pegadinha cruel."
+  ],
+  [
+    "Ele denunciaria um amigo que cometeu um crime.",
+    "Ele protegeria um amigo mesmo sabendo que cometeu um crime."
+  ]
+];
+
+const grid=document.getElementById('grid'),options=document.getElementById('options'),history=document.getElementById('history');
+let culprit=null,remaining=[],offered=[],used=[],chosen=null,ended=true;
+function randomIndex(n){return Math.floor(Math.random()*n)}
+function screen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('hidden',s.id!==id));window.scrollTo(0,0)}
+function renderGrid(){grid.replaceChildren();for(let n=1;n<=12;n++){const card=document.createElement('div');card.className='number-card'+(n===culprit?' culprit':'');card.textContent=n;grid.append(card)}}
+function update(){document.getElementById('count').textContent=`Dicas usadas: ${used.length}/12 • Cartas restantes: ${remaining.length}`;document.getElementById('draw').disabled=ended||(offered.length>0&&chosen===null)||used.length>=12||remaining.length<2;document.getElementById('draw').textContent=chosen!==null?'Próxima dica →':'Sortear duas dicas';document.getElementById('finish').disabled=ended||used.length===0}
+function start(){culprit=randomIndex(12)+1;remaining=deck.map((_,i)=>i);offered=[];used=[];chosen=null;ended=false;history.replaceChildren();options.replaceChildren();document.getElementById('culpritStatus').textContent=`Culpado: personagem na posição ${culprit}.`;document.getElementById('goHints').classList.remove('hidden');renderGrid();update()}
+function draw(){if(ended||used.length>=12)return;if(offered.length&&chosen===null)return;const pool=[...remaining];if(pool.length<2)return;offered=[];chosen=null;for(let i=0;i<2;i++){const pick=randomIndex(pool.length);offered.push(pool.splice(pick,1)[0])}renderOptions();update()}
+function renderOptions(){options.replaceChildren();offered.forEach(idx=>{const card=document.createElement('article');card.className='hint'+(chosen===idx?' selected':chosen!==null?' unselected':'');const green=document.createElement('div');green.className='half green';green.textContent=deck[idx][0];const red=document.createElement('div');red.className='half red';red.textContent=deck[idx][1];const footer=document.createElement('footer');if(chosen===idx){const tag=document.createElement('div');tag.className='picked';tag.textContent='✓ Carta escolhida';footer.append(tag)}else if(chosen!==null){const tag=document.createElement('div');tag.className='muted';tag.textContent='Não escolhida';footer.append(tag)}else{const btn=document.createElement('button');btn.textContent='Escolher esta carta';btn.onclick=()=>choose(idx);footer.append(btn)}card.append(green,red,footer);options.append(card)})}
+function choose(idx){if(ended||chosen!==null||!offered.includes(idx))return;chosen=idx;remaining=remaining.filter(i=>i!==idx);used.push(idx);const li=document.createElement('li');li.textContent=`Carta ${used.length}: ${deck[idx][0]} / ${deck[idx][1]}`;history.append(li);renderOptions();update()}
+function finish(){if(ended||used.length===0)return;ended=true;document.getElementById('result').textContent=`${13-used.length} ponto(s)`;document.getElementById('summary').textContent=`Sua equipe acertou com ${used.length} dica(s)!`;screen('screenEnd')}
+document.getElementById('start').onclick=()=>{if(!ended&&culprit!==null&&!confirm('Descartar a partida atual?'))return;start()};document.getElementById('goHints').onclick=()=>screen('screenHints');document.getElementById('draw').onclick=draw;document.getElementById('finish').onclick=finish;document.getElementById('again').onclick=()=>{culprit=null;ended=true;document.getElementById('culpritStatus').textContent='Nenhum culpado sorteado ainda.';document.getElementById('goHints').classList.add('hidden');renderGrid();screen('screenStart')};renderGrid();
+</script></body></html>
